@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head lang="zh">
+    <meta charset="UTF-8">
+    <title>听音</title>
+    <link rel="stylesheet"  href="1.css" type="text/css"/>
+</head>
+<body>
+    <header>
+        <h1>我爱听音乐</h1>
+        音量大小：<input type="range" min="0" max="100" value="60" id="change">
+    </header>
+    <section class="left">
+        <nav>
+            <ul>
+                <li><a href="javascript:;" title="music-1.mp3"> Music-1</a></li>
+                <li><a href="javascript:;" title="music-2.mp3"> Music-2</a></li>
+                <li><a href="javascript:;" title="music-3.mp3"> Music-3 </a></li>
+                <li><a href="javascript:;" title="music-4.mp3"> Music-4</a></li>
+            </ul>
+        </nav>
+    </section>
+    <section class="right"></section>
+
+<script>
+    var oLis = document.getElementsByTagName("li");
+    var ac = new (window.AudioContext||window.webkitAudioContext)();
+    var gainNode = ac[ac.createGain?"createGain":"createGainNode"]();
+    gainNode.connect(ac.destination);
+    var analyser =ac.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.connect(gainNode);
+
+    for(var i  = 0 ;  i < oLis.length ; i ++){
+            oLis[i].getElementsByTagName("a")[0].onclick = function(){
+                var oA = document.getElementsByTagName("a");
+                for(var i = 0; i < oA.length; i ++){
+                    oA[i].className = "";
+                }
+                this.className = "selected";
+
+                load("media/"+this.title);
+            };
+    }
+
+    var xhr = new XMLHttpRequest();
+    var count = 0;
+    var source = null;
+    function load(url){
+        var n = ++ count;
+        source && source.stop();
+        xhr.abort();
+        xhr.open("GET",url,true);
+        xhr.responseType = "arraybuffer";
+        //注意 ac.decodeAudioData代码放置的位置
+        xhr.onload = function(){
+            if(n != count)   return;
+            ac.decodeAudioData(xhr.response,function(buffer){
+                if(n != count) return;
+                var bufferSource = ac.createBufferSource();
+                bufferSource.buffer = buffer;
+                bufferSource.connect(analyser);
+                //bufferSource.connect(gainNode);
+                //bufferSource.connect(ac.destination);
+                bufferSource.start(0);
+                source = bufferSource;
+
+            },function(err){
+                console.log(err);
+            });
+           // console.log(xhr.response);
+        };
+        xhr.send();
+    }
+
+    function visializer(){
+        var arr = new Uint8Array(analyser.frequencyBinCount);
+
+        function v(){
+            analyser.getByteFrequencyData(arr);
+            console.log(arr);
+            requestAnimationFrame(v);
+        }
+
+        requestAnimationFrame(v);
+    }
+
+    visializer();
+
+    function changeVolume(persent){
+        gainNode.gain.value = persent * persent;
+    }
+
+
+
+    document.getElementById("change").onchange = function(){
+        changeVolume(this.value/this.max);
+    };
+
+    changeVolume(0.5);
+
+</script>
+</body>
+</html>
